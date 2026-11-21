@@ -21,6 +21,8 @@ interface TrialSidebarProps {
   onCreate: (input: NewTrialInput) => Promise<string | null>;
   onSelect: (id: string) => void;
   onDelete: (id: string) => Promise<void>;
+  /** Callback untuk menutup drawer saat di layar HP */
+  onCloseMobile?: () => void;
 }
 
 const inputClass =
@@ -33,6 +35,7 @@ export default function TrialSidebar({
   onCreate,
   onSelect,
   onDelete,
+  onCloseMobile,
 }: TrialSidebarProps) {
   const [creating, setCreating] = useState(false);
   const [mode, setMode] = useState<"blank" | "clone">("blank");
@@ -87,8 +90,12 @@ export default function TrialSidebar({
       cloneFromTrialId: mode === "clone" && cloneId ? cloneId : null,
     } as NewTrialInput);
     setSubmitting(false);
-    if (message) setError(message);
-    else setCreating(false);
+    if (message) {
+      setError(message);
+    } else {
+      setCreating(false);
+      onCloseMobile?.();
+    }
   }
 
   async function handleDelete(trial: TrialListItem) {
@@ -108,12 +115,29 @@ export default function TrialSidebar({
 
   return (
     <div className="flex h-full flex-col">
+      {/* Header Sidebar dengan tombol close pada layar HP */}
       <div className="flex items-center justify-between border-b border-slate-200 px-3 py-3">
-        <h1 className="text-sm font-bold text-slate-900">FAI &amp; Cpk Recorder</h1>
+        <div className="flex items-center gap-1.5 min-w-0">
+          {onCloseMobile && (
+            <button
+              type="button"
+              onClick={onCloseMobile}
+              className="rounded p-1 text-slate-500 hover:bg-slate-100 lg:hidden"
+              title="Tutup Menu"
+              aria-label="Tutup Menu"
+            >
+              <X size={18} />
+            </button>
+          )}
+          <h1 className="text-sm font-bold text-slate-900 truncate">
+            FAI &amp; Cpk Recorder
+          </h1>
+        </div>
+
         <button
           type="button"
           onClick={() => (creating ? setCreating(false) : openForm())}
-          className="flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+          className="flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-blue-700 shrink-0"
         >
           {creating ? <X size={14} /> : <Plus size={14} />}
           {creating ? "Tutup" : "Trial baru"}
@@ -252,7 +276,10 @@ export default function TrialSidebar({
               <div className="flex items-start gap-1 px-3 py-2">
                 <button
                   type="button"
-                  onClick={() => onSelect(t.id)}
+                  onClick={() => {
+                    onSelect(t.id);
+                    onCloseMobile?.();
+                  }}
                   aria-current={active ? "true" : undefined}
                   className="min-w-0 flex-1 text-left"
                 >

@@ -140,47 +140,51 @@ export default function MeasurementGrid({
 
   return (
     <section className="rounded-lg border border-slate-300 bg-white shadow-2xs print:border-0 print:shadow-none">
-      {/* Action Bar / Controls (hidden when printing) */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-3 py-2 print:hidden">
-        <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
-          Grid Pengukuran
-        </h2>
+      {/* Action Bar / Controls (flex-wrap responsif untuk layar HP dan desktop) */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-2 print:hidden">
+        {/* Sisi Kiri: Judul & Toggle Caliper */}
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+            Grid Pengukuran
+          </h2>
 
-        {/* Digital Caliper Navigation Mode */}
-        <div
-          className="inline-flex overflow-hidden rounded border border-slate-300 text-xs shadow-2xs ml-1"
-          role="group"
-          aria-label="Arah navigasi tombol Enter (Caliper HID)"
-        >
-          <button
-            type="button"
-            aria-pressed={navMode === "vertical"}
-            onClick={() => setNavMode("vertical")}
-            title="Digital Caliper: Enter turun ke sampel berikutnya"
-            className={`flex items-center gap-1 px-2 py-1 font-medium text-[11px] transition ${
-              navMode === "vertical"
-                ? "bg-blue-600 text-white"
-                : "bg-white text-slate-700 hover:bg-slate-50"
-            }`}
+          {/* Digital Caliper Navigation Mode */}
+          <div
+            className="inline-flex overflow-hidden rounded border border-slate-300 text-xs shadow-2xs"
+            role="group"
+            aria-label="Arah navigasi tombol Enter (Caliper HID)"
           >
-            <ArrowDown size={13} /> Vertikal (Enter ↓)
-          </button>
-          <button
-            type="button"
-            aria-pressed={navMode === "horizontal"}
-            onClick={() => setNavMode("horizontal")}
-            title="Digital Caliper: Enter geser ke dimensi berikutnya"
-            className={`flex items-center gap-1 border-l border-slate-300 px-2 py-1 font-medium text-[11px] transition ${
-              navMode === "horizontal"
-                ? "bg-blue-600 text-white"
-                : "bg-white text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            <ArrowRight size={13} /> Horizontal (Enter →)
-          </button>
+            <button
+              type="button"
+              aria-pressed={navMode === "vertical"}
+              onClick={() => setNavMode("vertical")}
+              title="Digital Caliper: Enter turun ke sampel berikutnya"
+              className={`flex items-center gap-1 px-2 py-1 font-medium text-[11px] transition ${
+                navMode === "vertical"
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              <ArrowDown size={13} /> Vertikal (Enter ↓)
+            </button>
+            <button
+              type="button"
+              aria-pressed={navMode === "horizontal"}
+              onClick={() => setNavMode("horizontal")}
+              title="Digital Caliper: Enter geser ke dimensi berikutnya"
+              className={`flex items-center gap-1 border-l border-slate-300 px-2 py-1 font-medium text-[11px] transition ${
+                navMode === "horizontal"
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              <ArrowRight size={13} /> Horizontal (Enter →)
+            </button>
+          </div>
         </div>
 
-        <div className="ml-auto flex flex-wrap items-center gap-1.5 text-xs">
+        {/* Sisi Kanan: Jumlah sampel & tombol-tombol aksi baris/dimensi */}
+        <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 text-xs">
           <span className="font-semibold text-slate-600 mr-1 text-[11px]">
             {sampleCount} sampel
           </span>

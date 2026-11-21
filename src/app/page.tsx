@@ -5,8 +5,7 @@ import {
   CheckCircle2,
   FileSpreadsheet,
   Loader2,
-  PanelLeftClose,
-  PanelLeftOpen,
+  Menu,
   Printer,
   Save,
   XCircle,
@@ -41,7 +40,15 @@ export default function HomePage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [autoSavedNotice, setAutoSavedNotice] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Sidebar default tertutup di HP (< lg), terbuka di Desktop (>= lg)
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth >= 1024) {
+      setSidebarOpen(true);
+    }
+  }, []);
 
   // Ref untuk mengontrol timer debouncing & mencegah race condition pada auto-save
   const isSavingRef = useRef(false);
@@ -258,7 +265,15 @@ export default function HomePage() {
     };
   }, [isDirty, saving, selectedId, draft, selectedTrial, executeSave]);
 
-  // Handle pembuatan trial baru
+  // Handler memilih trial (dengan auto-close otomatis di layar HP)
+  const handleSelectTrial = useCallback((id: string) => {
+    setSelectedId(id);
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setSidebarOpen(false);
+    }
+  }, []);
+
+  // Handle pembuatan trial baru (dengan auto-close di layar HP)
   async function handleCreateTrial(input: NewTrialInput): Promise<string | null> {
     try {
       const res = await fetch("/api/trials", {
@@ -274,6 +289,9 @@ export default function HomePage() {
 
       const created: TrialDTO = await res.json();
       await loadTrials(created.id);
+      if (typeof window !== "undefined" && window.innerWidth < 1024) {
+        setSidebarOpen(false);
+      }
       return null;
     } catch (err: unknown) {
       return err instanceof Error ? err.message : "Terjadi kesalahan";
@@ -453,72 +471,89 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-100 font-sans text-slate-900 print:h-auto print:w-auto print:overflow-visible print:bg-white">
-      {/* Sidebar Daftar Trial (hidden saat print) */}
+    <div className="flex h-screen w-screen overflow-hidden bg-slate-100 font-sans text-slate-900 print:h-auto print:w-auto print:overflow-visible print:bg-white relative">
+      {/* Mobile Drawer Backdrop (muncul saat drawer terbuka di layar < lg) */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs transition-opacity lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar: Slide-over Drawer di Mobile (< lg), Pinned Sidebar di Desktop (>= lg) */}
       <aside
-        className={`${
-          sidebarOpen ? "w-80 border-r border-slate-300" : "w-0 border-r-0"
-        } flex shrink-0 flex-col bg-white transition-all duration-200 overflow-hidden print:hidden`}
+        className={`fixed inset-y-0 left-0 z-50 flex h-full w-80 max-w-[85vw] flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out print:hidden
+          lg:static lg:z-auto lg:h-full lg:shadow-none lg:transition-[width]
+          ${
+            sidebarOpen
+              ? "translate-x-0 lg:w-80 lg:border-r lg:border-slate-300"
+              : "-translate-x-full lg:translate-x-0 lg:w-0 lg:border-r-0 lg:overflow-hidden"
+          }
+        `}
       >
         <TrialSidebar
           trials={trials}
           selectedId={selectedId}
           loading={loadingList}
           onCreate={handleCreateTrial}
-          onSelect={(id) => setSelectedId(id)}
+          onSelect={handleSelectTrial}
           onDelete={handleDeleteTrial}
+          onCloseMobile={() => setSidebarOpen(false)}
         />
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex flex-1 flex-col overflow-hidden print:overflow-visible">
-        {/* Top Header & Actions Bar (hidden in print) */}
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 print:hidden">
-          <div className="flex items-center gap-3">
+      <main className="flex flex-1 flex-col overflow-hidden print:overflow-visible min-w-0">
+        {/* Top Header & Actions Bar (responsif flex-wrap di layar HP) */}
+        <header className="flex min-h-14 flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-2 print:hidden">
+          {/* Sisi Kiri: Tombol Menu Drawer & Info Trial */}
+          <div className="flex items-center gap-2 min-w-0">
             <button
               type="button"
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="rounded p-1.5 text-slate-600 hover:bg-slate-100"
-              title={sidebarOpen ? "Ciutkan Sidebar" : "Buka Sidebar"}
+              className="rounded p-1.5 text-slate-600 hover:bg-slate-100 transition shrink-0"
+              title={sidebarOpen ? "Ciutkan Menu" : "Buka Menu Daftar Trial"}
+              aria-label={sidebarOpen ? "Ciutkan Menu" : "Buka Menu Daftar Trial"}
             >
-              {sidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+              <Menu size={20} />
             </button>
 
-            <div className="flex flex-col">
-              <h1 className="text-sm font-bold text-slate-900 leading-tight">
+            <div className="flex flex-col min-w-0">
+              <h1 className="text-xs sm:text-sm font-bold text-slate-900 leading-tight truncate max-w-[180px] sm:max-w-xs md:max-w-md">
                 {draft?.meta.productName || "FAI & Cpk Recorder"}
               </h1>
-              <p className="text-xs text-slate-500 truncate max-w-md">
+              <p className="text-[11px] text-slate-500 truncate max-w-[180px] sm:max-w-xs md:max-w-md">
                 {draft?.meta.productParts ? `${draft.meta.productParts} · ` : ""}
                 {draft?.meta.trialLevel || "Pilih atau buat trial untuk mulai merekam pengukuran"}
               </p>
             </div>
           </div>
 
-          {/* Save Status & Action Buttons */}
-          <div className="flex items-center gap-2">
+          {/* Sisi Kanan: Status Simpan & Tombol Aksi (flex-wrap) */}
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {/* Status Indicator dengan Auto-Save */}
             {saving ? (
-              <span className="flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
-                <Loader2 size={13} className="animate-spin" />
+              <span className="flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 sm:px-2.5 sm:py-1 text-[11px] font-medium text-blue-700">
+                <Loader2 size={12} className="animate-spin" />
                 <span>Menyimpan…</span>
               </span>
             ) : autoSavedNotice ? (
-              <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 border border-emerald-200">
-                <CheckCircle2 size={13} className="text-emerald-600" />
+              <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 sm:px-2.5 sm:py-1 text-[11px] font-medium text-emerald-700 border border-emerald-200">
+                <CheckCircle2 size={12} className="text-emerald-600" />
                 <span>Tersimpan otomatis</span>
               </span>
             ) : isDirty ? (
               <span
-                className="flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 border border-amber-200"
+                className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 sm:px-2.5 sm:py-1 text-[11px] font-medium text-amber-700 border border-amber-200"
                 title="Akan tersimpan otomatis dalam 2,5 detik"
               >
-                <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
                 <span>Belum disimpan</span>
               </span>
             ) : draft ? (
-              <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 border border-emerald-200">
-                <CheckCircle2 size={13} className="text-emerald-600" />
+              <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 sm:px-2.5 sm:py-1 text-[11px] font-medium text-emerald-700 border border-emerald-200">
+                <CheckCircle2 size={12} className="text-emerald-600" />
                 <span>Tersimpan</span>
               </span>
             ) : null}
@@ -528,10 +563,10 @@ export default function HomePage() {
               type="button"
               disabled={!draft || !isDirty || saving}
               onClick={() => executeSave("manual")}
-              className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 disabled:opacity-40 transition"
+              className="flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 disabled:opacity-40 transition"
               title="Simpan perubahan ke database sekarang"
             >
-              <Save size={14} />
+              <Save size={13} />
               <span>Simpan</span>
             </button>
 
@@ -540,11 +575,12 @@ export default function HomePage() {
               type="button"
               disabled={!draft}
               onClick={handleExportExcel}
-              className="flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 disabled:opacity-40 transition"
+              className="flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 disabled:opacity-40 transition"
               title="Ekspor laporan FAI & Cpk ke format .xlsx"
             >
-              <FileSpreadsheet size={14} className="text-emerald-600" />
-              <span>Export Excel</span>
+              <FileSpreadsheet size={13} className="text-emerald-600" />
+              <span>Export</span>
+              <span className="hidden sm:inline">Excel</span>
             </button>
 
             {/* Tombol Print / PDF */}
@@ -552,18 +588,19 @@ export default function HomePage() {
               type="button"
               disabled={!draft}
               onClick={handlePrint}
-              className="flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 disabled:opacity-40 transition"
+              className="flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 disabled:opacity-40 transition"
               title="Cetak atau simpan sebagai PDF (@media print)"
             >
-              <Printer size={14} className="text-slate-600" />
-              <span>Print / PDF</span>
+              <Printer size={13} className="text-slate-600" />
+              <span>Print</span>
+              <span className="hidden sm:inline">/ PDF</span>
             </button>
           </div>
         </header>
 
         {/* Error notification banner */}
         {errorMessage && (
-          <div className="flex items-center justify-between border-b border-red-200 bg-red-50 px-4 py-2 text-xs text-red-800 print:hidden">
+          <div className="flex items-center justify-between border-b border-red-200 bg-red-50 px-3 py-1.5 text-xs text-red-800 print:hidden">
             <div className="flex items-center gap-2">
               <XCircle size={15} className="text-red-600 shrink-0" />
               <span>{errorMessage}</span>
@@ -580,14 +617,14 @@ export default function HomePage() {
 
         {/* Success toast banner (manual save) */}
         {saveSuccess && (
-          <div className="flex items-center gap-2 border-b border-emerald-200 bg-emerald-50 px-4 py-1.5 text-xs font-medium text-emerald-800 print:hidden">
+          <div className="flex items-center gap-2 border-b border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-800 print:hidden">
             <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
             <span>Perubahan berhasil disimpan!</span>
           </div>
         )}
 
         {/* Body Area */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-3 print:overflow-visible print:p-0">
+        <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-3 print:overflow-visible print:p-0">
           {loadingDetail ? (
             <div className="flex h-64 items-center justify-center text-sm text-slate-500">
               <Loader2 className="mr-2 h-5 w-5 animate-spin text-blue-600" />
@@ -597,7 +634,7 @@ export default function HomePage() {
             <div className="flex h-64 flex-col items-center justify-center text-slate-500 text-sm">
               <p>Belum ada trial yang dipilih.</p>
               <p className="text-xs text-slate-400 mt-1">
-                Pilih trial dari sidebar atau klik <strong>Trial baru</strong> untuk memulai.
+                Pilih trial dari menu daftar atau klik <strong>Trial baru</strong> untuk memulai.
               </p>
             </div>
           ) : (
