@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Trial {
+  id              String      @id @default(cuid())
+  productName     String
+  productParts    String
+  partNumber      String
+  supplier        String?
+  receivedDate    String?
+  inspectionDate  String
+  sampleQty       String?
+  trialLevel      String
+  material        String?
+  measuringTool   String?
+  measuredBy      String?
+  cpkThreshold    Float       @default(1.0)
+  machineSettings String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  dimensions      Dimension[]
+}
+
+model Dimension {
+  id           String        @id @default(cuid())
+  trialId      String
+  trial        Trial         @relation(fields: [trialId], references: [id], onDelete: Cascade)
+  orderIndex   Int
+  name         String
+  nominal      Float
+  tolerance    Float
+  measurements Measurement[]
+}
+
+model Measurement {
+  id          String    @id @default(cuid())
+  dimensionId String
+  dimension   Dimension @relation(fields: [dimensionId], references: [id], onDelete: Cascade)
+  sampleNo    Int
+  value       Float?
+
+  @@unique([dimensionId, sampleNo])
+}
